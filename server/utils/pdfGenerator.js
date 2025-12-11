@@ -123,7 +123,7 @@ const generatePDF = (user, decision) => {
 
             doc.end();
 
-            stream.on('finish', () => resolve(`http://localhost:5000/pdfs/${filename}`));
+            stream.on('finish', () => resolve(`https://autonomous-loan-officer-rbup.vercel.app/pdfs/${filename}`));
             stream.on('error', reject);
 
         } catch (error) {
