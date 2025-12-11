@@ -1,8 +1,6 @@
 const PDFDocument = require('pdfkit');
-const fs = require('fs');
-const path = require('path');
 
-// Safe EMI Calculator
+// Safe EMI Calculator (Kept exactly as you provided)
 const calculateEMI = (principal, annualRate, years) => {
     const P = Number(principal) || 0;
     const R_annual = Number(annualRate) || 10;
@@ -24,18 +22,18 @@ const generatePDF = (user, decision) => {
     return new Promise((resolve, reject) => {
         try {
             const doc = new PDFDocument({ margin: 50, size: 'A4' });
-            const filename = `Sanction_${user.pan}_${Date.now()}.pdf`;
-            const pdfDir = path.join(__dirname, '../public/pdfs');
-            
-            if (!fs.existsSync(pdfDir)) {
-                fs.mkdirSync(pdfDir, { recursive: true });
-            }
 
-            const filepath = path.join(pdfDir, filename);
-            const stream = fs.createWriteStream(filepath);
-            doc.pipe(stream);
+            // --- 1. MEMORY BUFFER SETUP (Replaces fs.createWriteStream) ---
+            // This captures the PDF data in RAM instead of saving to a file
+            let buffers = [];
+            doc.on('data', buffers.push.bind(buffers));
+            doc.on('end', () => {
+                const pdfData = Buffer.concat(buffers);
+                // Return the PDF as a Base64 string (Direct Download Link)
+                resolve(`data:application/pdf;base64,${pdfData.toString('base64')}`);
+            });
 
-            // --- 1. PROFESSIONAL HEADER (Draws a Bank Logo Style Header) ---
+            // --- 2. PROFESSIONAL HEADER ---
             doc.rect(0, 0, 600, 100).fillColor('#1a237e').fill(); // Dark Blue Banner
             
             doc.fillColor('white').fontSize(24).font('Helvetica-Bold').text('AI-Bank', 50, 35);
@@ -44,7 +42,7 @@ const generatePDF = (user, decision) => {
             doc.fillColor('white').fontSize(12).text('www.aiBank.com', 400, 35, { align: 'right' });
             doc.text('support@aiBank.com', 400, 55, { align: 'right' });
 
-            // --- 2. LETTER INFO ---
+            // --- 3. LETTER INFO ---
             doc.fillColor('black').moveDown(6);
             
             doc.fontSize(10).font('Helvetica-Bold').text(`Date: ${new Date().toLocaleDateString()}`, { align: 'right' });
@@ -59,7 +57,7 @@ const generatePDF = (user, decision) => {
             doc.fontSize(14).font('Helvetica-Bold').text('SUBJECT: IN-PRINCIPLE LOAN SANCTION LETTER', { underline: true, align: 'center' });
             doc.moveDown();
 
-            // --- 3. GREETING & STATUS ---
+            // --- 4. GREETING & STATUS ---
             doc.fontSize(11).font('Helvetica').text('Dear Customer,');
             doc.moveDown();
             
@@ -70,7 +68,7 @@ const generatePDF = (user, decision) => {
             }
             doc.moveDown();
 
-            // --- 4. KEY FACT STATEMENT (The Box) ---
+            // --- 5. KEY FACT STATEMENT (The Box) ---
             const startY = doc.y;
             
             // Draw Box
@@ -96,7 +94,7 @@ const generatePDF = (user, decision) => {
 
             doc.moveDown(5);
 
-            // --- 5. REPAYMENT SCHEDULE TABLE ---
+            // --- 6. REPAYMENT SCHEDULE TABLE ---
             doc.fontSize(12).font('Helvetica-Bold').fillColor('black').text('Repayment Illustration', 50);
             doc.fontSize(9).font('Helvetica').fillColor('#666').text('Note: This is an indicative schedule based on current interest rates.');
             doc.moveDown(0.5);
@@ -116,15 +114,13 @@ const generatePDF = (user, decision) => {
             doc.text(`${decision.tenure} Years`, 250, tableTop + 28);
             doc.text(`INR ${emi.toLocaleString('en-IN')}`, 400, tableTop + 28);
 
-            // --- 6. FOOTER ---
+            // --- 7. FOOTER ---
             const bottomY = 750;
             doc.fontSize(8).fillColor('#888').text('Terms & Conditions Apply. This is a computer-generated document and does not require a physical signature.', 50, bottomY, { align: 'center', width: 500 });
             doc.text('AI-Bank | Registered Office: Mumbai, India', 50, bottomY + 12, { align: 'center', width: 500 });
 
+            // Finalize PDF (This triggers the 'end' event above)
             doc.end();
-
-            stream.on('finish', () => resolve(`https://autonomous-loan-officer-rbup.vercel.app/pdfs/${filename}`));
-            stream.on('error', reject);
 
         } catch (error) {
             console.error("PDF Gen Error:", error);

@@ -48,6 +48,7 @@ const ChatMessage = ({ msg, onOptionClick }) => {
               href={msg.pdfUrl} 
               target="_blank" 
               rel="noopener noreferrer" 
+              download="SanctionLetter.pdf"  // <--- THIS IS THE FIX
               className="pdf-link"
             >
               📥 Download Sanction Letter
